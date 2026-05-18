@@ -11,6 +11,10 @@ function App() {
   const [course, setCourse] = useState('')
   const [due, setDue] = useState('')
 
+  // Edit state: tracks which task is being edited and holds the updated values
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState({ title: '', course: '', due: '' })
+
   // Fetch all tasks from the backend when the component first loads
   useEffect(() => {
     fetch('http://localhost:5000/tasks')
@@ -51,6 +55,31 @@ function App() {
       .catch(err => console.error('Failed to delete task:', err))
   }
 
+  // Load a task's current values into the edit form and enter edit mode
+  const handleStartEdit = (task) => {
+    setEditingId(task.id)
+    setEditForm({ title: task.title, course: task.course, due: task.due })
+  }
+
+  // PUT updated task to the backend, then update it in the task list
+  const handleSaveEdit = (id) => {
+    fetch(`http://localhost:5000/tasks/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm)
+    })
+      .then(res => res.json())
+      .then(updatedTask => {
+        // Replace the old task in state with the updated one
+        setTasks(prevTasks => prevTasks.map(task =>
+          task.id === id ? updatedTask : task
+        ))
+        // Exit edit mode
+        setEditingId(null)
+      })
+      .catch(err => console.error('Failed to update task:', err))
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -71,29 +100,81 @@ function App() {
           <p className="text-sm text-gray-500 mt-0.5">Stay organized and never miss a deadline!</p>
         </div>
 
-        {/* Task list: supports viewing and deleting tasks */}
+        {/* Task list: supports viewing, editing, and deleting tasks */}
         <div className="flex flex-col gap-3">
           {tasks.map(task => (
             <div key={task.id} className="bg-white rounded-lg border border-gray-200 px-4 py-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-medium text-gray-800">{task.title}</p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {/* Course tag and due date: color coding added in Week 6 */}
-                    <span className="text-xs font-medium bg-pink-50 text-pink-600 border border-pink-100 rounded-md px-1.5 py-0.5">
-                      {task.course}
-                    </span>
-                    <span className="text-xs text-gray-400">Due {task.due}</span>
+
+              {editingId === task.id ? (
+                // Edit mode: show editable inputs pre-filled with current task values
+                <div className="flex flex-col gap-2">
+                  <input
+                    type="text"
+                    value={editForm.title}
+                    onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                  <input
+                    type="text"
+                    value={editForm.course}
+                    onChange={e => setEditForm({ ...editForm, course: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                  <input
+                    type="date"
+                    value={editForm.due}
+                    onChange={e => setEditForm({ ...editForm, due: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                  <div className="flex gap-2 mt-1">
+                    {/* Save button: sends updated task to the backend */}
+                    <button
+                      onClick={() => handleSaveEdit(task.id)}
+                      className="bg-pink-600 hover:bg-pink-700 text-white text-xs rounded-lg px-3 py-1.5 transition"
+                    >
+                      Save
+                    </button>
+                    {/* Cancel button: exits edit mode without saving */}
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs rounded-lg px-3 py-1.5 transition"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
-                {/* Delete button: removes task from UI and database */}
-                <button
-                  onClick={() => handleDeleteTask(task.id)}
-                  className="text-xs text-red-400 hover:text-red-600 transition ml-4 mt-1 flex-shrink-0"
-                >
-                  Delete
-                </button>
-              </div>
+              ) : (
+                // View mode: show task details with edit and delete buttons
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium text-gray-800">{task.title}</p>
+                    {/* Course tag and due date: color coding added in Week 6 */}
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-xs font-medium bg-pink-50 text-pink-600 border border-pink-100 rounded-md px-1.5 py-0.5">
+                        {task.course}
+                      </span>
+                      <span className="text-xs text-gray-400">Due {task.due}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 ml-4 mt-1 flex-shrink-0">
+                    {/* Edit button: loads task values into the edit form */}
+                    <button
+                      onClick={() => handleStartEdit(task)}
+                      className="text-xs text-blue-400 hover:text-blue-600 transition"
+                    >
+                      Edit
+                    </button>
+                    {/* Delete button: removes task from UI and database */}
+                    <button
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="text-xs text-red-400 hover:text-red-600 transition"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </div>
           ))}
         </div>
