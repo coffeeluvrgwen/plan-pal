@@ -17,7 +17,7 @@ function App() {
       .then(res => res.json())
       .then(data => setTasks(data))
       .catch(err => console.error('Failed to fetch tasks:', err))
-  }, [])  
+  }, [])
 
   // POST a new task to the backend, then add it to the task list
   const handleAddTask = () => {
@@ -28,14 +28,14 @@ function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, course, due })
     })
-    .then(res => res.json())
-    .then(newTask => {
-      setTasks(prevTasks => [...prevTasks, newTask])
-      setTitle('')
-      setCourse('')
-      setDue('')
-    })
-    .catch(err => console.error('Failed to add task:', err))
+      .then(res => res.json())
+      .then(newTask => {
+        setTasks(prevTasks => [...prevTasks, newTask])
+        setTitle('')
+        setCourse('')
+        setDue('')
+      })
+      .catch(err => console.error('Failed to add task:', err))
   }
 
   return (
@@ -44,7 +44,7 @@ function App() {
       {/* Navigation bar: this will be expanded with additional links and user profile in future iterations */}
       <nav className="bg-white border-b border-gray-200 px-6 py-4">
         <h1 className="text-xl font-semibold text-gray-800">Plan Pal</h1>
-        {/* Task Counter: will reflect the number of upcoming tasks in future iterations */}
+        {/* Task counter: reflects live count from the backend */}
         <span className="bg-pink-50 text-pink-600 text-xs font-medium px-2.5 py-1 rounded-full">
           {tasks.length} upcoming tasks
         </span>
@@ -58,21 +58,25 @@ function App() {
           <p className="text-sm text-gray-500 mt-0.5">Stay organized and never miss a deadline!</p>
         </div>
 
-        {/* Task list: this will be dynamically generated from the backend in future iterations */}
+        {/* Task list: displays tasks from the backend */}
         <div className="flex flex-col gap-3">
           {tasks.map(task => (
             <div key={task.id} className="bg-white rounded-lg border border-gray-200 px-4 py-3">
               <div>
                 <p className="font-medium text-gray-800">{task.title}</p>
-                <span className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-md px-1.5 py-0.5 mt-1 inline-block"> {task.course} </span>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  {/* Course tag and due date: color coding added in Week 6 */}
+                  <span className="text-xs font-medium bg-pink-50 text-pink-600 border border-pink-100 rounded-md px-1.5 py-0.5">
+                    {task.course}
+                  </span>
+                  <span className="text-xs text-gray-400">Due {task.due}</span>
+                </div>
               </div>
-              {/* Task details: course and due date, will be color coded in future iterations */}
-              <p className="text-sm text-gray-500">{task.course} · Due {task.due}</p>
             </div>
           ))}
         </div>
 
-        {/* Page Divider */}
+        {/* Page divider */}
         <div className="flex items-center gap-3 my-8">
           <div className="flex-1 h-px bg-gray-100" />
           <span className="text-xs text-gray-500 font-medium uppercase">More features coming soon!</span>
@@ -104,8 +108,8 @@ function App() {
               onChange={e => setDue(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition"
             />
-            {/* Submit button: onClick handler added when form is done*/}
-            <button 
+            {/* Submit button: calls handleAddTask which POSTs the new task to the backend */}
+            <button
               onClick={handleAddTask}
               className="w-full bg-pink-600 hover:bg-pink-700 active:scale-95 text-white rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150 mt-1"
             >
@@ -113,6 +117,7 @@ function App() {
             </button>
           </div>
         </div>
+
       </main>
     </div>
   )
