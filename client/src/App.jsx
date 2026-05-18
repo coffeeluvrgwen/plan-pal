@@ -70,11 +70,9 @@ function App() {
     })
       .then(res => res.json())
       .then(updatedTask => {
-        // Replace the old task in state with the updated one
         setTasks(prevTasks => prevTasks.map(task =>
           task.id === id ? updatedTask : task
         ))
-        // Exit edit mode
         setEditingId(null)
       })
       .catch(err => console.error('Failed to update task:', err))
@@ -83,28 +81,27 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* Navigation bar: this will be expanded with additional links and user profile in future iterations */}
-      <nav className="bg-white border-b border-gray-200 px-6 py-4">
-        <h1 className="text-xl font-semibold text-gray-800">Plan Pal</h1>
+      {/* Navigation bar: sticky header with app title and task counter */}
+      <nav className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+        <h1 className="text-xl font-semibold text-gray-800 tracking-tight">Plan Pal</h1>
         {/* Task counter: reflects live count from the backend */}
         <span className="bg-pink-50 text-pink-600 text-xs font-medium px-2.5 py-1 rounded-full">
-          {tasks.length} upcoming tasks
+          {tasks.length} upcoming
         </span>
       </nav>
 
       <main className="max-w-2xl mx-auto px-4 py-8">
 
-        {/* Dashboard: displays upcoming tasks sorted by the due date */}
+        {/* Dashboard header: title and subtitle with visual hierarchy */}
         <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-700 mb-4">Upcoming tasks</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Stay organized and never miss a deadline!</p>
+          <h2 className="text-lg font-semibold text-gray-800">Upcoming tasks</h2>
+          <p className="text-sm text-gray-400 mt-0.5">Stay organized and never miss a deadline!</p>
         </div>
 
         {/* Task list: supports viewing, editing, and deleting tasks */}
         <div className="flex flex-col gap-3">
           {tasks.map(task => (
             <div key={task.id} className="bg-white rounded-lg border border-gray-200 px-4 py-3">
-
               {editingId === task.id ? (
                 // Edit mode: show editable inputs pre-filled with current task values
                 <div className="flex flex-col gap-2">
@@ -148,8 +145,8 @@ function App() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium text-gray-800">{task.title}</p>
-                    {/* Course tag and due date: color coding added in Week 6 */}
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {/* Course tag and due date: color coding added in next commit */}
                       <span className="text-xs font-medium bg-pink-50 text-pink-600 border border-pink-100 rounded-md px-1.5 py-0.5">
                         {task.course}
                       </span>
@@ -174,7 +171,6 @@ function App() {
                   </div>
                 </div>
               )}
-
             </div>
           ))}
         </div>
@@ -182,7 +178,7 @@ function App() {
         {/* Page divider */}
         <div className="flex items-center gap-3 my-8">
           <div className="flex-1 h-px bg-gray-100" />
-          <span className="text-xs text-gray-500 font-medium uppercase">More features coming soon!</span>
+          <span className="text-xs text-gray-300 font-medium uppercase tracking-widest">Add new</span>
           <div className="flex-1 h-px bg-gray-100" />
         </div>
 
