@@ -20,7 +20,7 @@ function App() {
   // Task state: populated from the backend on load, replaces placeholder data
   const [tasks, setTasks] = useState([])
 
-  // View state: toggles between list view and weekly calendar view
+  // View state: toggles between list view and, weekly, and calendar view
   const [view, setView] = useState('list')
 
   // Sort state: controls how tasks are sorted (e.g. by due date, course, etc.)
@@ -101,7 +101,7 @@ function App() {
   // Sort tasks based on the current sortBy value
   const sortedTasks = [...tasks].sort((a, b) => {
     if (sortBy === 'due') {
-      return new DataTransfer(a.due) - new DataTransfer(b.due)
+      return new Date(a.due) - new Date(b.due)
     }
     if (sortBy === 'course') {
       return a.course.localeCompare(b.course)
@@ -111,6 +111,35 @@ function App() {
     }
     return 0
   })
+
+  // Calendar state: tracks which month is being viewed
+  const [calendarDate, setCalendarDate] = useState(new Date())
+
+  const getCalendarDays = () => {
+    const year = calendarDate.getFullYear()
+    const month = calendarDate.getMonth()
+    const firstDay = new Date(year, month, 1)
+    const lastDay = new Date(year, month + 1, 0)
+    
+    const paddedDays = []
+    for (let i = 0; i < firstDay.getDay(); i++) {
+      paddedDays.push(null)
+    }
+    for ( let d = 1; d <= lastDay.getDate(); d++) {
+      paddedDays.push(new Date(year, month, d))
+    }
+    return paddedDays
+  }
+
+  // Return tasks due on a specific date, used in calendar view
+  const getTasksForDate = (date) => {
+    if (!date) return []
+    const dateStr = date.toISOString().split('T')[0]
+    return tasks.filter(task => task.due === dateStr)
+  }
+
+  // Format calendar month label (e.g. "May 2026")
+  const calendarHeading = calendarDate.toLocaleString('default', { month: 'long', year: 'numeric' })
 
   // Group tasks by day of the week for the calendar view
   const getWeeklyTasks = () => {
@@ -149,29 +178,39 @@ function App() {
               <p className="text-sm text-gray-400 mt-0.5">Stay organized and never miss a deadline!</p>
             </div>
 
-            {/* View toggle: switches between list and weekly calendar view */}
-            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => setView('list')}
-                className={`text-xs px-3 py-1.5 rounded-md transition font-medium ${
-                  view === 'list'
-                    ? 'bg-white text-gray-800 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                List
-              </button>
-              <button
-                onClick={() => setView('weekly')}
-                className={`text-xs px-3 py-1.5 rounded-md transition font-medium ${
-                  view === 'weekly'
-                    ? 'bg-white text-gray-800 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Weekly
-              </button>
-            </div>
+        {/* View toggle: switches between list, weekly, and calendar views */}
+        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setView('list')}
+            className={`text-xs px-3 py-1.5 rounded-md transition font-medium ${
+              view === 'list'
+                ? 'bg-white text-gray-800 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            List
+          </button>
+          <button
+            onClick={() => setView('weekly')}
+            className={`text-xs px-3 py-1.5 rounded-md transition font-medium ${
+              view === 'weekly'
+                ? 'bg-white text-gray-800 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Weekly
+          </button>
+          <button
+            onClick={() => setView('calendar')}
+            className={`text-xs px-3 py-1.5 rounded-md transition font-medium ${
+              view === 'calendar'
+                ? 'bg-white text-gray-800 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Calendar
+          </button>
+        </div>
           </div>
 
           {/* Sort controls: only shown in list view */}
@@ -292,7 +331,7 @@ function App() {
             )}
           </div>
 
-        ) : (
+        ) : view === 'weekly' ? (
 
           // Weekly view: tasks grouped by day of the week
           <div className="flex flex-col gap-3">
@@ -303,7 +342,6 @@ function App() {
                 return (
                   <div key={day} className={`bg-white rounded-xl border ${color} px-4 py-3`}>
                     <div className="flex items-center justify-between mb-2">
-                      {/* Day label: shows the day name and task count */}
                       <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                         {day}
                       </span>
@@ -311,9 +349,7 @@ function App() {
                         <span className="text-xs text-gray-300">{grouped[day].length} task{grouped[day].length > 1 ? 's' : ''}</span>
                       )}
                     </div>
-
                     {grouped[day].length === 0 ? (
-                      // Empty day: shown when no tasks are due that day
                       <p className="text-xs text-gray-300">No tasks due</p>
                     ) : (
                       <div className="flex flex-col gap-1.5">
@@ -321,7 +357,6 @@ function App() {
                           const color = getCourseColor(task.course)
                           return (
                             <div key={task.id} className="flex items-center gap-2">
-                              {/* Course tag: color coded in weekly view */}
                               <span className={`text-xs font-medium ${color.bg} ${color.text} ${color.border} border rounded-md px-1.5 py-0.5 flex-shrink-0`}>
                                 {task.course}
                               </span>
@@ -335,6 +370,82 @@ function App() {
                 )
               })
             })()}
+          </div>
+
+        ) : (
+
+          // Calendar view: monthly grid showing tasks on their due dates
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+
+            {/* Calendar header: month title and prev/next navigation */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <button
+                onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))}
+                className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded transition"
+              >
+                ← Prev
+              </button>
+              <span className="text-sm font-semibold text-gray-700">{calendarHeading}</span>
+              <button
+                onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))}
+                className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded transition"
+              >
+                Next →
+              </button>
+            </div>
+
+            {/* Day of week headers */}
+            <div className="grid grid-cols-7 border-b border-gray-100">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                <div key={d} className="text-center text-xs font-medium text-gray-400 py-2">
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* Calendar day grid */}
+            <div className="grid grid-cols-7">
+              {getCalendarDays().map((date, i) => {
+                const dayTasks = getTasksForDate(date)
+                const isToday = date && date.toDateString() === new Date().toDateString()
+                return (
+                  <div
+                    key={i}
+                    className={`min-h-16 p-1.5 border-b border-r border-gray-50 ${!date ? 'bg-gray-50' : ''}`}
+                  >
+                    {date && (
+                      <>
+                        {/* Day number: highlighted pink if today */}
+                        <div className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1 ${
+                          isToday ? 'bg-pink-500 text-white' : 'text-gray-500'
+                        }`}>
+                          {date.getDate()}
+                        </div>
+                        {/* Task labels: shows up to 2 then a count for the rest */}
+                        <div className="flex flex-col gap-0.5">
+                          {dayTasks.slice(0, 2).map(task => {
+                            const color = getCourseColor(task.course)
+                            return (
+                              <div
+                                key={task.id}
+                                className={`text-xs ${color.bg} ${color.text} rounded px-1 py-0.5 truncate leading-tight`}
+                                title={task.title}
+                              >
+                                {task.title}
+                              </div>
+                            )
+                          })}
+                          {/* Overflow indicator: shown when more than 2 tasks fall on the same day */}
+                          {dayTasks.length > 2 && (
+                            <div className="text-xs text-gray-400 px-1">+{dayTasks.length - 2} more</div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
         )}
