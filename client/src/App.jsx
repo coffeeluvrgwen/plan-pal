@@ -20,6 +20,12 @@ function App() {
   // Task state: populated from the backend on load, replaces placeholder data
   const [tasks, setTasks] = useState([])
 
+  // View state: toggles between list view and weekly calendar view
+  const [view, setView] = useState('list')
+
+  // Sort state: controls how tasks are sorted (e.g. by due date, course, etc.)
+  const [sortBy, setSortBy] = useState('due')
+
   // Form state: controlled inputs for the new task form
   const [title, setTitle] = useState('')
   const [course, setCourse] = useState('')
@@ -92,6 +98,35 @@ function App() {
       .catch(err => console.error('Failed to update task:', err))
   }
 
+  // Sort tasks based on the current sortBy value
+  const sortedTasks = [...tasks].sort((a, b) => {
+    if (sortBy === 'due') {
+      return new DataTransfer(a.due) - new DataTransfer(b.due)
+    }
+    if (sortBy === 'course') {
+      return a.course.localeCompare(b.course)
+    }
+    if (sortBy === 'title') {
+      return a.title.localeCompare(b.title)
+    }
+    return 0
+  })
+
+  // Group tasks by day of the week for the calendar view
+  const getWeeklyTasks = () => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+    const grouped = {}
+    days.forEach(day => grouped[day] = [])
+
+    tasks.forEach(task => {
+      const date = new Date(task.due + 'T00:00:00')
+      const dayName = days[date.getDay()]
+      grouped[dayName].push(task)
+    })
+    return { days, grouped }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -108,104 +143,201 @@ function App() {
 
         {/* Dashboard header: title and subtitle with visual hierarchy */}
         <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-800">Upcoming tasks</h2>
-          <p className="text-sm text-gray-400 mt-0.5">Stay organized and never miss a deadline!</p>
-        </div>
-
-        {/* Task list: supports viewing, editing, and deleting with color coded course tags */}
-        <div className="flex flex-col gap-2">
-          {tasks.length === 0 ? (
-            // Empty state: shown when there are no tasks yet
-            <div className="text-center py-12 text-gray-400">
-              <p className="text-sm">No tasks yet — add one below!</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">Upcoming tasks</h2>
+              <p className="text-sm text-gray-400 mt-0.5">Stay organized and never miss a deadline!</p>
             </div>
-          ) : (
-            tasks.map(task => {
-              // Get color classes for this task's course
-              const color = getCourseColor(task.course)
 
-              return (
-                <div
-                  key={task.id}
-                  className="bg-white rounded-xl border border-gray-100 px-4 py-3.5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-150"
+            {/* View toggle: switches between list and weekly calendar view */}
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setView('list')}
+                className={`text-xs px-3 py-1.5 rounded-md transition font-medium ${
+                  view === 'list'
+                    ? 'bg-white text-gray-800 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                List
+              </button>
+              <button
+                onClick={() => setView('weekly')}
+                className={`text-xs px-3 py-1.5 rounded-md transition font-medium ${
+                  view === 'weekly'
+                    ? 'bg-white text-gray-800 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Weekly
+              </button>
+            </div>
+          </div>
+
+          {/* Sort controls: only shown in list view */}
+          {view === 'list' && (
+            <div className="flex items-center gap-2 mt-3">
+              <span className="text-xs text-gray-400">Sort by</span>
+              {/* Sort buttons: updates sortBy state which re-sorts the task list */}
+              {['due', 'course', 'title'].map(option => (
+                <button
+                  key={option}
+                  onClick={() => setSortBy(option)}
+                  className={`text-xs px-2.5 py-1 rounded-md border transition ${
+                    sortBy === option
+                      ? 'bg-pink-50 text-pink-600 border-pink-100 font-medium'
+                      : 'bg-white text-gray-400 border-gray-100 hover:text-gray-600'
+                  }`}
                 >
-                  {editingId === task.id ? (
-                    // Edit mode: show editable inputs pre-filled with current task values
-                    <div className="flex flex-col gap-2">
-                      <input
-                        type="text"
-                        value={editForm.title}
-                        onChange={e => setEditForm({ ...editForm, title: e.target.value })}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
-                      />
-                      <input
-                        type="text"
-                        value={editForm.course}
-                        onChange={e => setEditForm({ ...editForm, course: e.target.value })}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
-                      />
-                      <input
-                        type="date"
-                        value={editForm.due}
-                        onChange={e => setEditForm({ ...editForm, due: e.target.value })}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
-                      />
-                      <div className="flex gap-2 mt-1">
-                        {/* Save button: sends updated task to the backend */}
-                        <button
-                          onClick={() => handleSaveEdit(task.id)}
-                          className="bg-pink-600 hover:bg-pink-700 text-white text-xs rounded-lg px-3 py-1.5 transition"
-                        >
-                          Save
-                        </button>
-                        {/* Cancel button: exits edit mode without saving */}
-                        <button
-                          onClick={() => setEditingId(null)}
-                          className="bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs rounded-lg px-3 py-1.5 transition"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    // View mode: show task with color coded course tag
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium text-gray-800 text-sm">{task.title}</p>
-                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          {/* Course tag: color coded by course name using courseColors map */}
-                          <span className={`text-xs font-medium ${color.bg} ${color.text} ${color.border} border rounded-md px-1.5 py-0.5`}>
-                            {task.course}
-                          </span>
-                          {/* Due date: turns red if the date is in the past */}
-                          <span className={`text-xs font-medium ${new Date(task.due) < new Date() ? 'text-red-400' : 'text-gray-400'}`}>
-                            Due {task.due}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-3 ml-4 mt-1 flex-shrink-0">
-                        {/* Edit button: loads task values into the edit form */}
-                        <button
-                          onClick={() => handleStartEdit(task)}
-                          className="text-xs text-blue-400 hover:text-blue-600 transition"
-                        >
-                          Edit
-                        </button>
-                        {/* Delete button: removes task from UI and database */}
-                        <button
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="text-xs text-red-400 hover:text-red-600 transition"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                </button>
+              ))}
+            </div>
           )}
         </div>
+
+        {/* Task views: switches between list view and weekly calendar view */}
+        {view === 'list' ? (
+
+          // List view: tasks sorted by the current sortBy value
+          <div className="flex flex-col gap-2">
+            {sortedTasks.length === 0 ? (
+              // Empty state: shown when there are no tasks yet
+              <div className="text-center py-12 text-gray-400">
+                <p className="text-sm">No tasks yet — add one below!</p>
+              </div>
+            ) : (
+              sortedTasks.map(task => {
+                const color = getCourseColor(task.course)
+                return (
+                  <div
+                    key={task.id}
+                    className="bg-white rounded-xl border border-gray-100 px-4 py-3.5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-150"
+                  >
+                    {editingId === task.id ? (
+                      // Edit mode: show editable inputs pre-filled with current task values
+                      <div className="flex flex-col gap-2">
+                        <input
+                          type="text"
+                          value={editForm.title}
+                          onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                        <input
+                          type="text"
+                          value={editForm.course}
+                          onChange={e => setEditForm({ ...editForm, course: e.target.value })}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                        <input
+                          type="date"
+                          value={editForm.due}
+                          onChange={e => setEditForm({ ...editForm, due: e.target.value })}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                        <div className="flex gap-2 mt-1">
+                          {/* Save button: sends updated task to the backend */}
+                          <button
+                            onClick={() => handleSaveEdit(task.id)}
+                            className="bg-pink-600 hover:bg-pink-700 text-white text-xs rounded-lg px-3 py-1.5 transition"
+                          >
+                            Save
+                          </button>
+                          {/* Cancel button: exits edit mode without saving */}
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs rounded-lg px-3 py-1.5 transition"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      // View mode: show task with color coded course tag
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium text-gray-800 text-sm">{task.title}</p>
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                            {/* Course tag: color coded by course name */}
+                            <span className={`text-xs font-medium ${color.bg} ${color.text} ${color.border} border rounded-md px-1.5 py-0.5`}>
+                              {task.course}
+                            </span>
+                            {/* Due date: turns red if the date is in the past */}
+                            <span className={`text-xs font-medium ${new Date(task.due) < new Date() ? 'text-red-400' : 'text-gray-400'}`}>
+                              Due {task.due}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-3 ml-4 mt-1 shrink-0">
+                          {/* Edit button: loads task values into the edit form */}
+                          <button
+                            onClick={() => handleStartEdit(task)}
+                            className="text-xs text-blue-400 hover:text-blue-600 transition"
+                          >
+                            Edit
+                          </button>
+                          {/* Delete button: removes task from UI and database */}
+                          <button
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="text-xs text-red-400 hover:text-red-600 transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+        ) : (
+
+          // Weekly view: tasks grouped by day of the week
+          <div className="flex flex-col gap-3">
+            {(() => {
+              const { days, grouped } = getWeeklyTasks()
+              return days.map(day => {
+                const color = grouped[day].length > 0 ? 'border-gray-200' : 'border-gray-100'
+                return (
+                  <div key={day} className={`bg-white rounded-xl border ${color} px-4 py-3`}>
+                    <div className="flex items-center justify-between mb-2">
+                      {/* Day label: shows the day name and task count */}
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {day}
+                      </span>
+                      {grouped[day].length > 0 && (
+                        <span className="text-xs text-gray-300">{grouped[day].length} task{grouped[day].length > 1 ? 's' : ''}</span>
+                      )}
+                    </div>
+
+                    {grouped[day].length === 0 ? (
+                      // Empty day: shown when no tasks are due that day
+                      <p className="text-xs text-gray-300">No tasks due</p>
+                    ) : (
+                      <div className="flex flex-col gap-1.5">
+                        {grouped[day].map(task => {
+                          const color = getCourseColor(task.course)
+                          return (
+                            <div key={task.id} className="flex items-center gap-2">
+                              {/* Course tag: color coded in weekly view */}
+                              <span className={`text-xs font-medium ${color.bg} ${color.text} ${color.border} border rounded-md px-1.5 py-0.5 flex-shrink-0`}>
+                                {task.course}
+                              </span>
+                              <span className="text-xs text-gray-700 font-medium">{task.title}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            })()}
+          </div>
+
+        )}
 
         {/* Page divider */}
         <div className="flex items-center gap-3 my-8">
