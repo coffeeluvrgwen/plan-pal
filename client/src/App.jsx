@@ -1,13 +1,43 @@
 // App.jsx: Main application component for Plan Pal, holds the main layout and all child sections
 
-{/* Placeholder data: this will be replaced with dynamic data from the backend in future iterations */}
-const placeholderTasks = [
-  { id: 1, title: "Essay outline", course: "English", due: "Mon Apr 28" },
-  { id: 2, title: "Problem set 3", course: "Math", due: "Wed Apr 30" },
-  { id: 3, title: "Lab report", course: "Biology", due: "Fri May 2" },
-]
+import { useState, useEffect } from 'react'
 
 function App() {
+  // Task state: populated from the backend on load, replaces placeholder data
+  const [tasks, setTasks] = useState([])
+
+  // Form state: controlled inputs for the new task form
+  const [title, setTitle] = useState('')
+  const [course, setCourse] = useState('')
+  const [due, setDue] = useState('')
+
+  // Fetch all tasks from the backend when the component first loads
+  useEffect(() => {
+    fetch('http://localhost:5000/tasks')
+      .then(res => res.json())
+      .then(data => setTasks(data))
+      .catch(err => console.error('Failed to fetch tasks:', err))
+  }, [])  
+
+  // POST a new task to the backend, then add it to the task list
+  const handleAddTask = () => {
+    if (!title || !course || !due) return
+
+    fetch('http://localhost:5000/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, course, due })
+    })
+    .then(res => res.json())
+    .then(newTask => {
+      setTasks(prevTasks => [...prevTasks, newTask])
+      setTitle('')
+      setCourse('')
+      setDue('')
+    })
+    .catch(err => console.error('Failed to add task:', err))
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -16,7 +46,7 @@ function App() {
         <h1 className="text-xl font-semibold text-gray-800">Plan Pal</h1>
         {/* Task Counter: will reflect the number of upcoming tasks in future iterations */}
         <span className="bg-pink-50 text-pink-600 text-xs font-medium px-2.5 py-1 rounded-full">
-          {placeholderTasks.length} upcoming tasks
+          {tasks.length} upcoming tasks
         </span>
       </nav>
 
@@ -30,7 +60,7 @@ function App() {
 
         {/* Task list: this will be dynamically generated from the backend in future iterations */}
         <div className="flex flex-col gap-3">
-          {placeholderTasks.map(task => (
+          {tasks.map(task => (
             <div key={task.id} className="bg-white rounded-lg border border-gray-200 px-4 py-3">
               <div>
                 <p className="font-medium text-gray-800">{task.title}</p>
@@ -49,27 +79,36 @@ function App() {
           <div className="flex-1 h-px bg-gray-100" />
         </div>
 
-        {/* New task form: this will be connected to the backend to add new tasks in future iterations */}
+        {/* New task form: connected to the backend to add new tasks */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">New task</h3>
           <div className="flex flex-col gap-3">
             <input
               type="text"
               placeholder="Task name"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             />
             <input
               type="text"
               placeholder="Course (e.g. Biology)"
+              value={course}
+              onChange={e => setCourse(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             />
             {/* Date input: will validate that due date is not in the past with backend additions */}
             <input
               type="date"
+              value={due}
+              onChange={e => setDue(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition"
             />
             {/* Submit button: onClick handler added when form is done*/}
-            <button className="w-full bg-pink-600 hover:bg-pink-700 active:scale-95 text-white rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150 mt-1">
+            <button 
+              onClick={handleAddTask}
+              className="w-full bg-pink-600 hover:bg-pink-700 active:scale-95 text-white rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150 mt-1"
+            >
               Add task
             </button>
           </div>
