@@ -38,6 +38,19 @@ function App() {
       .catch(err => console.error('Failed to add task:', err))
   }
 
+  // DELETE a task from the backend, then remove it from the task list
+  const handleDeleteTask = (id) => {
+    fetch(`http://localhost:5000/tasks/${id}`, {
+      method: 'DELETE'
+    })
+      .then(res => res.json())
+      .then(() => {
+        // Filter out the deleted task from state without a full page reload
+        setTasks(prevTasks => prevTasks.filter(task => task.id !== id))
+      })
+      .catch(err => console.error('Failed to delete task:', err))
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -58,19 +71,28 @@ function App() {
           <p className="text-sm text-gray-500 mt-0.5">Stay organized and never miss a deadline!</p>
         </div>
 
-        {/* Task list: displays tasks from the backend */}
+        {/* Task list: supports viewing and deleting tasks */}
         <div className="flex flex-col gap-3">
           {tasks.map(task => (
             <div key={task.id} className="bg-white rounded-lg border border-gray-200 px-4 py-3">
-              <div>
-                <p className="font-medium text-gray-800">{task.title}</p>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  {/* Course tag and due date: color coding added in Week 6 */}
-                  <span className="text-xs font-medium bg-pink-50 text-pink-600 border border-pink-100 rounded-md px-1.5 py-0.5">
-                    {task.course}
-                  </span>
-                  <span className="text-xs text-gray-400">Due {task.due}</span>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-medium text-gray-800">{task.title}</p>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {/* Course tag and due date: color coding added in Week 6 */}
+                    <span className="text-xs font-medium bg-pink-50 text-pink-600 border border-pink-100 rounded-md px-1.5 py-0.5">
+                      {task.course}
+                    </span>
+                    <span className="text-xs text-gray-400">Due {task.due}</span>
+                  </div>
                 </div>
+                {/* Delete button: removes task from UI and database */}
+                <button
+                  onClick={() => handleDeleteTask(task.id)}
+                  className="text-xs text-red-400 hover:text-red-600 transition ml-4 mt-1 flex-shrink-0"
+                >
+                  Delete
+                </button>
               </div>
             </div>
           ))}
