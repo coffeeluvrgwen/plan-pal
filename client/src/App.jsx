@@ -16,14 +16,20 @@ const courseColors = {
 // Helper: returns the color classes for a given course, falls back to default
 const getCourseColor = (course) => courseColors[course] || courseColors['default']
 
+// Helper: formats a date string from YYYY-MM-DD to readable format e.g. "May 1, 2025"
+const formatDate = (dateStr) => {
+  const date = new Date(dateStr + 'T00:00:00')
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 function App() {
   // Task state: populated from the backend on load, replaces placeholder data
   const [tasks, setTasks] = useState([])
 
-  // View state: toggles between list view and, weekly, and calendar view
+  // View state: toggles between list, weekly, and calendar views
   const [view, setView] = useState('list')
 
-  // Sort state: controls how tasks are sorted (e.g. by due date, course, etc.)
+  // Sort state: controls how tasks are ordered in the list view
   const [sortBy, setSortBy] = useState('due')
 
   // Form state: controlled inputs for the new task form
@@ -31,9 +37,15 @@ function App() {
   const [course, setCourse] = useState('')
   const [due, setDue] = useState('')
 
+  // Error state: shown when the user tries to submit an incomplete form
+  const [formError, setFormError] = useState('')
+
   // Edit state: tracks which task is being edited and holds the updated values
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState({ title: '', course: '', due: '' })
+
+  // Calendar state: tracks which month is currently displayed
+  const [calendarDate, setCalendarDate] = useState(new Date())
 
   // Fetch all tasks from the backend when the component first loads
   useEffect(() => {
@@ -45,7 +57,11 @@ function App() {
 
   // POST a new task to the backend, then add it to the task list
   const handleAddTask = () => {
-    if (!title || !course || !due) return
+    if (!title || !course || !due) {
+      setFormError('Please fill in all fields before adding a task.')
+      return
+    }
+    setFormError('')
 
     fetch('http://localhost:5000/tasks', {
       method: 'POST',
@@ -101,6 +117,7 @@ function App() {
   // Sort tasks based on the current sortBy value
   const sortedTasks = [...tasks].sort((a, b) => {
     if (sortBy === 'due') {
+      // Sort by due date ascending: soonest first
       return new Date(a.due) - new Date(b.due)
     }
     if (sortBy === 'course') {
@@ -112,42 +129,11 @@ function App() {
     return 0
   })
 
-  // Calendar state: tracks which month is being viewed
-  const [calendarDate, setCalendarDate] = useState(new Date())
-
-  const getCalendarDays = () => {
-    const year = calendarDate.getFullYear()
-    const month = calendarDate.getMonth()
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
-    
-    const paddedDays = []
-    for (let i = 0; i < firstDay.getDay(); i++) {
-      paddedDays.push(null)
-    }
-    for ( let d = 1; d <= lastDay.getDate(); d++) {
-      paddedDays.push(new Date(year, month, d))
-    }
-    return paddedDays
-  }
-
-  // Return tasks due on a specific date, used in calendar view
-  const getTasksForDate = (date) => {
-    if (!date) return []
-    const dateStr = date.toISOString().split('T')[0]
-    return tasks.filter(task => task.due === dateStr)
-  }
-
-  // Format calendar month label (e.g. "May 2026")
-  const calendarHeading = calendarDate.toLocaleString('default', { month: 'long', year: 'numeric' })
-
-  // Group tasks by day of the week for the calendar view
+  // Group tasks by day of the week for the weekly view
   const getWeeklyTasks = () => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
     const grouped = {}
     days.forEach(day => grouped[day] = [])
-
     tasks.forEach(task => {
       const date = new Date(task.due + 'T00:00:00')
       const dayName = days[date.getDay()]
@@ -155,6 +141,32 @@ function App() {
     })
     return { days, grouped }
   }
+
+  // Build the calendar grid for the current month
+  const getCalendarDays = () => {
+    const year = calendarDate.getFullYear()
+    const month = calendarDate.getMonth()
+    const firstDay = new Date(year, month, 1)
+    const lastDay = new Date(year, month + 1, 0)
+    const paddedDays = []
+    for (let i = 0; i < firstDay.getDay(); i++) {
+      paddedDays.push(null)
+    }
+    for (let d = 1; d <= lastDay.getDate(); d++) {
+      paddedDays.push(new Date(year, month, d))
+    }
+    return paddedDays
+  }
+
+  // Returns tasks due on a specific calendar date
+  const getTasksForDate = (date) => {
+    if (!date) return []
+    const dateStr = date.toISOString().split('T')[0]
+    return tasks.filter(task => task.due === dateStr)
+  }
+
+  // Format the calendar month heading e.g. "May 2025"
+  const calendarHeading = calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -170,54 +182,53 @@ function App() {
 
       <main className="max-w-2xl mx-auto px-4 py-8">
 
-        {/* Dashboard header: title and subtitle with visual hierarchy */}
+        {/* Dashboard header: title, subtitle, view toggle, and sort controls */}
         <div className="mb-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-gray-800">Upcoming tasks</h2>
               <p className="text-sm text-gray-400 mt-0.5">Stay organized and never miss a deadline!</p>
             </div>
 
-        {/* View toggle: switches between list, weekly, and calendar views */}
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-          <button
-            onClick={() => setView('list')}
-            className={`text-xs px-3 py-1.5 rounded-md transition font-medium ${
-              view === 'list'
-                ? 'bg-white text-gray-800 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            List
-          </button>
-          <button
-            onClick={() => setView('weekly')}
-            className={`text-xs px-3 py-1.5 rounded-md transition font-medium ${
-              view === 'weekly'
-                ? 'bg-white text-gray-800 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Weekly
-          </button>
-          <button
-            onClick={() => setView('calendar')}
-            className={`text-xs px-3 py-1.5 rounded-md transition font-medium ${
-              view === 'calendar'
-                ? 'bg-white text-gray-800 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Calendar
-          </button>
-        </div>
+            {/* View toggle: switches between list, weekly, and calendar views */}
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 self-start sm:self-auto">
+              <button
+                onClick={() => setView('list')}
+                className={`text-xs px-3 py-1.5 rounded-md transition font-medium ${
+                  view === 'list'
+                    ? 'bg-white text-gray-800 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                List
+              </button>
+              <button
+                onClick={() => setView('weekly')}
+                className={`text-xs px-3 py-1.5 rounded-md transition font-medium ${
+                  view === 'weekly'
+                    ? 'bg-white text-gray-800 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Weekly
+              </button>
+              <button
+                onClick={() => setView('calendar')}
+                className={`text-xs px-3 py-1.5 rounded-md transition font-medium ${
+                  view === 'calendar'
+                    ? 'bg-white text-gray-800 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Calendar
+              </button>
+            </div>
           </div>
 
           {/* Sort controls: only shown in list view */}
           {view === 'list' && (
             <div className="flex items-center gap-2 mt-3">
               <span className="text-xs text-gray-400">Sort by</span>
-              {/* Sort buttons: updates sortBy state which re-sorts the task list */}
               {['due', 'course', 'title'].map(option => (
                 <button
                   key={option}
@@ -235,7 +246,7 @@ function App() {
           )}
         </div>
 
-        {/* Task views: switches between list view and weekly calendar view */}
+        {/* Task views: switches between list, weekly, and calendar views */}
         {view === 'list' ? (
 
           // List view: tasks sorted by the current sortBy value
@@ -301,13 +312,13 @@ function App() {
                             <span className={`text-xs font-medium ${color.bg} ${color.text} ${color.border} border rounded-md px-1.5 py-0.5`}>
                               {task.course}
                             </span>
-                            {/* Due date: turns red if the date is in the past */}
+                            {/* Due date: formatted and turns red if in the past */}
                             <span className={`text-xs font-medium ${new Date(task.due) < new Date() ? 'text-red-400' : 'text-gray-400'}`}>
-                              Due {task.due}
+                              Due {formatDate(task.due)}
                             </span>
                           </div>
                         </div>
-                        <div className="flex gap-3 ml-4 mt-1 shrink-0">
+                        <div className="flex gap-3 ml-4 mt-1 flex-shrink-0">
                           {/* Edit button: loads task values into the edit form */}
                           <button
                             onClick={() => handleStartEdit(task)}
@@ -337,38 +348,35 @@ function App() {
           <div className="flex flex-col gap-3">
             {(() => {
               const { days, grouped } = getWeeklyTasks()
-              return days.map(day => {
-                const color = grouped[day].length > 0 ? 'border-gray-200' : 'border-gray-100'
-                return (
-                  <div key={day} className={`bg-white rounded-xl border ${color} px-4 py-3`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                        {day}
-                      </span>
-                      {grouped[day].length > 0 && (
-                        <span className="text-xs text-gray-300">{grouped[day].length} task{grouped[day].length > 1 ? 's' : ''}</span>
-                      )}
-                    </div>
-                    {grouped[day].length === 0 ? (
-                      <p className="text-xs text-gray-300">No tasks due</p>
-                    ) : (
-                      <div className="flex flex-col gap-1.5">
-                        {grouped[day].map(task => {
-                          const color = getCourseColor(task.course)
-                          return (
-                            <div key={task.id} className="flex items-center gap-2">
-                              <span className={`text-xs font-medium ${color.bg} ${color.text} ${color.border} border rounded-md px-1.5 py-0.5 flex-shrink-0`}>
-                                {task.course}
-                              </span>
-                              <span className="text-xs text-gray-700 font-medium">{task.title}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
+              return days.map(day => (
+                <div key={day} className={`bg-white rounded-xl border ${grouped[day].length > 0 ? 'border-gray-200' : 'border-gray-100'} px-4 py-3`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{day}</span>
+                    {grouped[day].length > 0 && (
+                      <span className="text-xs text-gray-300">{grouped[day].length} task{grouped[day].length > 1 ? 's' : ''}</span>
                     )}
                   </div>
-                )
-              })
+                  {grouped[day].length === 0 ? (
+                    <p className="text-xs text-gray-300">No tasks due</p>
+                  ) : (
+                    <div className="flex flex-col gap-1.5">
+                      {grouped[day].map(task => {
+                        const color = getCourseColor(task.course)
+                        return (
+                          <div key={task.id} className="flex items-center gap-2">
+                            <span className={`text-xs font-medium ${color.bg} ${color.text} ${color.border} border rounded-md px-1.5 py-0.5 flex-shrink-0`}>
+                              {task.course}
+                            </span>
+                            <span className="text-xs text-gray-700 font-medium">{task.title}</span>
+                            {/* Due date: formatted for readability */}
+                            <span className="text-xs text-gray-400 ml-auto">{formatDate(task.due)}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))
             })()}
           </div>
 
@@ -421,7 +429,7 @@ function App() {
                         }`}>
                           {date.getDate()}
                         </div>
-                        {/* Task labels: shows up to 2 then a count for the rest */}
+                        {/* Task labels: shows up to 2 then overflow count */}
                         <div className="flex flex-col gap-0.5">
                           {dayTasks.slice(0, 2).map(task => {
                             const color = getCourseColor(task.course)
@@ -461,27 +469,56 @@ function App() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">New task</h3>
           <div className="flex flex-col gap-3">
-            <input
-              type="text"
-              placeholder="Task name"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-            />
-            <input
-              type="text"
-              placeholder="Course (e.g. Biology)"
-              value={course}
-              onChange={e => setCourse(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-            />
-            {/* Date input: will validate that due date is not in the past with backend additions */}
-            <input
-              type="date"
-              value={due}
-              onChange={e => setDue(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition"
-            />
+
+            {/* Task name input with accessible label */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500" htmlFor="task-title">
+                Task name
+              </label>
+              <input
+                id="task-title"
+                type="text"
+                placeholder="e.g. Essay outline"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              />
+            </div>
+
+            {/* Course input with accessible label */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500" htmlFor="task-course">
+                Course
+              </label>
+              <input
+                id="task-course"
+                type="text"
+                placeholder="e.g. Biology"
+                value={course}
+                onChange={e => setCourse(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              />
+            </div>
+
+            {/* Due date input with accessible label */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500" htmlFor="task-due">
+                Due date
+              </label>
+              <input
+                id="task-due"
+                type="date"
+                value={due}
+                onChange={e => setDue(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition"
+              />
+            </div>
+
+            {/* Form error: shown when user submits without filling all fields */}
+            {formError && (
+              <p className="text-xs text-red-500 mt-1">{formError}</p>
+            )}
+
             {/* Submit button: calls handleAddTask which POSTs the new task to the backend */}
             <button
               onClick={handleAddTask}
