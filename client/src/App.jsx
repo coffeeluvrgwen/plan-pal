@@ -503,19 +503,83 @@ function App() {
               />
             </div>
 
-            {/* Course input with accessible label */}
+            {/* Course dropdown with accessible label */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-gray-400 uppercase tracking-wide" htmlFor="task-course">
                 Course
               </label>
-              <input
+              <select
                 id="task-course"
-                type="text"
-                placeholder="e.g. Biology"
                 value={course}
                 onChange={e => setCourse(e.target.value)}
-                className="w-full border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition-all"
-              />
+                className="w-full border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-800 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition-all appearance-none cursor-pointer"
+              >
+                <option value="" disabled>Select a course...</option>
+
+                {/* Sciences */}
+                <optgroup label="Sciences">
+                  <option>Biology</option>
+                  <option>Chemistry</option>
+                  <option>Physics</option>
+                  <option>Anatomy</option>
+                </optgroup>
+
+                {/* Math & Technology */}
+                <optgroup label="Math & Technology">
+                  <option>Math</option>
+                  <option>Statistics</option>
+                  <option>Computer Science</option>
+                  <option>Web Development</option>
+                </optgroup>
+
+                {/* Humanities & Social Sciences */}
+                <optgroup label="Humanities & Social Sciences">
+                  <option>English</option>
+                  <option>History</option>
+                  <option>Philosophy</option>
+                  <option>Psychology</option>
+                  <option>Sociology</option>
+                  <option>Political Science</option>
+                </optgroup>
+
+                {/* Business & Economics */}
+                <optgroup label="Business & Economics">
+                  <option>Economics</option>
+                  <option>Business</option>
+                  <option>Accounting</option>
+                  <option>Marketing</option>
+                </optgroup>
+
+                {/* Arts & Communication */}
+                <optgroup label="Arts & Communication">
+                  <option>Art</option>
+                  <option>Music</option>
+                  <option>Communications</option>
+                  <option>Journalism</option>
+                </optgroup>
+
+                {/* Health & Education */}
+                <optgroup label="Health & Education">
+                  <option>Nursing</option>
+                  <option>Education</option>
+                  <option>Nutrition</option>
+                </optgroup>
+
+                {/* Custom option: lets users type their own course if not listed */}
+                <optgroup label="Other">
+                  <option value="Other">Other (type below)</option>
+                </optgroup>
+              </select>
+
+              {/* Custom course input: only shown when Other is selected */}
+              {course === 'Other' && (
+                <input
+                  type="text"
+                  placeholder="Type your course name..."
+                  onChange={e => setCourse(e.target.value)}
+                  className="w-full border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition-all mt-1"
+                />
+              )}
             </div>
 
             {/* Due date input with accessible label */}
